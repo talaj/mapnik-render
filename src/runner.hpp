@@ -52,9 +52,6 @@ private:
     result_list test_one(
         path_type const & style_path,
         report_type & report) const;
-    void parse_map_sizes(
-        std::string const & str,
-        std::vector<map_size> & sizes) const;
 
     const map_sizes_grammar<std::string::const_iterator> map_sizes_parser_;
     const config defaults_;

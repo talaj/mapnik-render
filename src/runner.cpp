@@ -154,42 +154,47 @@ result_list runner::test_one(runner::path_type const& style_path,
                              report_type & report) const
 {
     config cfg(defaults_);
-    mapnik::Map map(cfg.sizes.front().width, cfg.sizes.front().height);
+    const map_size default_size(512, 512);
+    mapnik::Map map(default_size.width, default_size.height);
     result_list results;
 
     mapnik::load_map(map, style_path.string(), true);
 
     mapnik::parameters const & params = map.get_extra_parameters();
 
-    boost::optional<mapnik::value_integer> status = params.get<mapnik::value_integer>("status", cfg.status);
-
-    if (!*status)
+    if (cfg.sizes.empty())
     {
-        return results;
+        if (boost::optional<std::string> sizes = params.get<std::string>("sizes"))
+        {
+            parse_map_sizes(map_sizes_parser_, *sizes, cfg.sizes);
+        }
+        else
+        {
+            cfg.sizes.push_back(default_size);
+        }
     }
 
-    boost::optional<std::string> sizes = params.get<std::string>("sizes");
-
-    if (sizes)
+    if (cfg.tiles.empty())
     {
-        cfg.sizes.clear();
-        parse_map_sizes(*sizes, cfg.sizes);
+        if (boost::optional<std::string> tiles = params.get<std::string>("tiles"))
+        {
+            cfg.tiles.clear();
+            parse_map_sizes(map_sizes_parser_, *tiles, cfg.tiles);
+        }
+        else
+        {
+            cfg.tiles.emplace_back(1, 1);
+        }
     }
 
-    boost::optional<std::string> tiles = params.get<std::string>("tiles");
-
-    if (tiles)
+    if (cfg.envelopes.empty())
     {
-        cfg.tiles.clear();
-        parse_map_sizes(*tiles, cfg.tiles);
-    }
-
-    boost::optional<std::string> bbox_string = params.get<std::string>("bbox");
-    mapnik::box2d<double> box;
-
-    if (bbox_string)
-    {
-        box.from_string(*bbox_string);
+        if (boost::optional<std::string> bbox_string = params.get<std::string>("bbox"))
+        {
+            mapnik::box2d<double> box;
+            box.from_string(*bbox_string);
+            cfg.envelopes.push_back(box);
+        }
     }
 
     std::string name(style_path.stem().string());
@@ -212,34 +217,29 @@ result_list runner::test_one(runner::path_type const& style_path,
                 for (auto const & ren : renderers_)
                 {
                     map.resize(size.width * scale_factor, size.height * scale_factor);
-                    if (box.valid())
+
+                    renderer_visitor visitor(name, map, tiles_count, scale_factor,
+                        results, report, iterations_);
+
+                    if (cfg.envelopes.empty())
                     {
-                        map.zoom_to_box(box);
+                        map.zoom_all();
+                        mapnik::util::apply_visitor(visitor, ren);
                     }
                     else
                     {
-                        map.zoom_all();
+                        for (auto const & box : cfg.envelopes)
+                        {
+                            map.zoom_to_box(box);
+                            mapnik::util::apply_visitor(visitor, ren);
+                        }
                     }
-                    mapnik::util::apply_visitor(
-                        renderer_visitor(name, map, tiles_count, scale_factor,
-                            results, report, iterations_), ren);
                 }
             }
         }
     }
 
     return results;
-}
-
-void runner::parse_map_sizes(std::string const & str, std::vector<map_size> & sizes) const
-{
-    boost::spirit::ascii::space_type space;
-    std::string::const_iterator iter = str.begin();
-    std::string::const_iterator end = str.end();
-    if (!boost::spirit::qi::phrase_parse(iter, end, map_sizes_parser_, space, sizes))
-    {
-        throw std::runtime_error("Failed to parse list of sizes: '" + str + "'");
-    }
 }
 
 }

@@ -23,6 +23,8 @@
 #ifndef MAP_SIZES_GRAMMAR_HPP
 #define MAP_SIZES_GRAMMAR_HPP
 
+#include "config.hpp"
+
 #pragma GCC diagnostic push
 #include <mapnik/warning_ignore.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -53,6 +55,11 @@ struct map_sizes_grammar : qi::grammar<Iterator, std::vector<map_size>(), ascii:
 
     qi::rule<Iterator, std::vector<map_size>(), ascii::space_type> start;
 };
+
+void parse_map_sizes(
+    map_sizes_grammar<std::string::const_iterator> const & map_sizes_parser,
+    std::string const & str,
+    std::vector<map_size> & sizes);
 
 }
 

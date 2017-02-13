@@ -116,6 +116,8 @@ int main(int argc, char** argv)
              "log level (debug, warn, error, none)")
 #endif
         ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0 }, "1.0"), "scale factor")
+        ("envelope", po::value<std::string>(), "bounding box in map coordinates")
+        ("size", po::value<std::string>(), "size of output images")
         (agg_renderer::name, "render with AGG renderer")
 #if defined(HAVE_CAIRO)
         (cairo_renderer::name, "render with Cairo renderer")
@@ -170,6 +172,20 @@ int main(int argc, char** argv)
 
     config defaults;
     defaults.scales = vm["scale-factor"].as<std::vector<double>>();
+
+    if (vm.count("envelope"))
+    {
+        mapnik::box2d<double> box;
+        box.from_string(vm["envelope"].as<std::string>());
+        defaults.envelopes.push_back(box);
+    }
+
+    if (vm.count("size"))
+    {
+        const map_sizes_grammar<std::string::const_iterator> map_sizes_parser;
+        std::string size(vm["size"].as<std::string>());
+        parse_map_sizes(map_sizes_parser, size, defaults.sizes);
+    }
 
     runner run(defaults,
                vm["iterations"].as<std::size_t>(),

@@ -20,57 +20,23 @@
  *
  *****************************************************************************/
 
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
-
-#include <vector>
-#include <string>
-#include <chrono>
-
-#include <mapnik/box2d.hpp>
-
-#include <boost/filesystem.hpp>
+#include "map_sizes_grammar.hpp"
 
 namespace mapnik_render
 {
 
-struct map_size
+void parse_map_sizes(
+    map_sizes_grammar<std::string::const_iterator> const & map_sizes_parser,
+    std::string const & str,
+    std::vector<map_size> & sizes)
 {
-    map_size(std::size_t _width, std::size_t _height) : width(_width), height(_height) { }
-    map_size() { }
-    std::size_t width = 0;
-    std::size_t height = 0;
-};
-
-struct config
-{
-    std::vector<double> scales;
-    std::vector<map_size> sizes;
-    std::vector<map_size> tiles;
-    std::vector<mapnik::box2d<double>> envelopes;
-};
-
-enum result_state : std::uint8_t
-{
-    STATE_OK,
-    STATE_ERROR
-};
-
-struct result
-{
-    std::string name;
-    result_state state;
-    std::string renderer_name;
-    map_size size;
-    map_size tiles;
-    double scale_factor;
-    boost::filesystem::path image_path;
-    std::string error_message;
-    std::chrono::high_resolution_clock::duration duration;
-};
-
-using result_list = std::vector<result>;
-
+    boost::spirit::ascii::space_type space;
+    std::string::const_iterator iter = str.begin();
+    std::string::const_iterator end = str.end();
+    if (!boost::spirit::qi::phrase_parse(iter, end, map_sizes_parser, space, sizes))
+    {
+        throw std::runtime_error("Failed to parse list of sizes: '" + str + "'");
+    }
 }
 
-#endif
+}

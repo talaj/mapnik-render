@@ -23,14 +23,13 @@
 #ifndef CONSOLE_REPORT_HPP
 #define CONSOLE_REPORT_HPP
 
-// stl
 #include <iostream>
 
 #include <mapnik/util/variant.hpp>
 
 #include "config.hpp"
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 class console_report
@@ -64,20 +63,6 @@ public:
     }
 
     void report(result const & r);
-};
-
-class html_report
-{
-public:
-    html_report(std::ostream & _s) : s(_s)
-    {
-    }
-
-    void report(result const & r, boost::filesystem::path const & output_dir);
-    void summary(result_list const & results, boost::filesystem::path const & output_dir);
-
-protected:
-    std::ostream & s;
 };
 
 using report_type = mapnik::util::variant<console_report, console_short_report>;
@@ -117,8 +102,6 @@ public:
 private:
     result_list const & result_;
 };
-
-void html_summary(result_list const & results, boost::filesystem::path output_dir);
 
 }
 

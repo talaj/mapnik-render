@@ -20,15 +20,15 @@
  *
  *****************************************************************************/
 
-#ifndef VISUAL_TEST_RUNNER_HPP
-#define VISUAL_TEST_RUNNER_HPP
+#ifndef MAPNIK_RENDER_RUNNER_HPP
+#define MAPNIK_RENDER_RUNNER_HPP
 
 #include "config.hpp"
 #include "report.hpp"
 #include "renderer.hpp"
 #include "map_sizes_grammar.hpp"
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 class runner
@@ -39,33 +39,26 @@ class runner
 public:
     using renderer_container = std::vector<renderer_type>;
 
-    runner(path_type const & styles_dir,
-           config const & cfg,
-           std::size_t iterations,
-           std::size_t fail_limit,
-           std::size_t jobs,
-           renderer_container const & renderers);
+    runner(
+        config const & cfg,
+        std::size_t iterations,
+        renderer_container const & renderers);
 
-    result_list test_all(report_type & report) const;
-    result_list test(std::vector<std::string> const & style_names, report_type & report) const;
+    result_list test(
+        std::vector<std::string> const & style_names,
+        report_type & report) const;
 
 private:
-    result_list test_parallel(std::vector<path_type> const & files, report_type & report, std::size_t jobs) const;
-    result_list test_range(files_iterator begin,
-                           files_iterator end,
-                           std::reference_wrapper<report_type> report,
-                           std::reference_wrapper<std::atomic<std::size_t>> fail_limit) const;
-    result_list test_one(path_type const & style_path,
-                         report_type & report,
-                         std::atomic<std::size_t> & fail_limit) const;
-    void parse_map_sizes(std::string const & str, std::vector<map_size> & sizes) const;
+    result_list test_one(
+        path_type const & style_path,
+        report_type & report) const;
+    void parse_map_sizes(
+        std::string const & str,
+        std::vector<map_size> & sizes) const;
 
     const map_sizes_grammar<std::string::const_iterator> map_sizes_parser_;
-    const path_type styles_dir_;
     const config defaults_;
-    const std::size_t jobs_;
     const std::size_t iterations_;
-    const std::size_t fail_limit_;
     const renderer_container renderers_;
 };
 

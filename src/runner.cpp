@@ -20,7 +20,6 @@
  *
  *****************************************************************************/
 
-// stl
 #include <algorithm>
 #include <future>
 #include <atomic>
@@ -29,7 +28,7 @@
 
 #include "runner.hpp"
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 class renderer_visitor
@@ -41,18 +40,14 @@ public:
                      double scale_factor,
                      result_list & results,
                      report_type & report,
-                     std::size_t iterations,
-                     bool is_fail_limit,
-                     std::atomic<std::size_t> & fail_count)
+                     std::size_t iterations)
         : name_(name),
           map_(map),
           tiles_(tiles),
           scale_factor_(scale_factor),
           results_(results),
           report_(report),
-          iterations_(iterations),
-          is_fail_limit_(is_fail_limit),
-          fail_count_(fail_count)
+          iterations_(iterations)
     {
     }
 
@@ -87,10 +82,6 @@ private:
                 r.duration = end - start;
                 mapnik::util::apply_visitor(report_visitor(r), report_);
                 results_.push_back(std::move(r));
-                if (is_fail_limit_ && r.state == STATE_FAIL)
-                {
-                    ++fail_count_;
-                }
             }
         }
     }
@@ -121,126 +112,38 @@ private:
     result_list & results_;
     report_type & report_;
     std::size_t iterations_;
-    bool is_fail_limit_;
-    std::atomic<std::size_t> & fail_count_;
 };
 
-runner::runner(runner::path_type const & styles_dir,
-               config const & defaults,
+runner::runner(config const & defaults,
                std::size_t iterations,
-               std::size_t fail_limit,
-               std::size_t jobs,
                runner::renderer_container const & renderers)
-    : styles_dir_(styles_dir),
-      defaults_(defaults),
-      jobs_(jobs),
+    : defaults_(defaults),
       iterations_(iterations),
-      fail_limit_(fail_limit),
       renderers_(renderers)
 {
 }
 
-result_list runner::test_all(report_type & report) const
-{
-    boost::filesystem::directory_iterator begin(styles_dir_);
-    boost::filesystem::directory_iterator end;
-    std::vector<runner::path_type> files(begin, end);
-    return test_parallel(files, report, jobs_);
-}
-
 result_list runner::test(std::vector<std::string> const & style_names, report_type & report) const
 {
-    std::vector<runner::path_type> files;
-    files.reserve(style_names.size());
-    std::transform(style_names.begin(), style_names.end(), std::back_inserter(files),
-        [&](runner::path_type const & name)
-        {
-            return (name.extension() == ".xml") ? name : (styles_dir_ / (name.string() + ".xml"));
-        });
-    return test_parallel(files, report, jobs_);
-}
-
-result_list runner::test_parallel(std::vector<runner::path_type> const & files, report_type & report, std::size_t jobs) const
-{
     result_list results;
 
-    if (files.empty())
+    for (auto const & style_name : style_names)
     {
-        return results;
-    }
-
-    if (jobs == 0)
-    {
-        jobs = 1;
-    }
-
-    std::size_t chunk_size = files.size() / jobs;
-
-    if (chunk_size == 0)
-    {
-        chunk_size = files.size();
-        jobs = 1;
-    }
-
-    std::launch launch(jobs == 1 ? std::launch::deferred : std::launch::async);
-    std::vector<std::future<result_list>> futures(jobs);
-    std::atomic<std::size_t> fail_count(0);
-
-    for (std::size_t i = 0; i < jobs; i++)
-    {
-        files_iterator begin(files.begin() + i * chunk_size);
-        files_iterator end(files.begin() + (i + 1) * chunk_size);
-
-        // Handle remainder of files.size() / jobs
-        if (i == jobs - 1)
+        runner::path_type file(style_name);
+        try
         {
-            end = files.end();
+            result_list r(test_one(file, report));
+            std::move(r.begin(), r.end(), std::back_inserter(results));
         }
-
-        futures[i] = std::async(launch, &runner::test_range, this, begin, end, std::ref(report), std::ref(fail_count));
-    }
-
-    for (auto & f : futures)
-    {
-        result_list r = f.get();
-        std::move(r.begin(), r.end(), std::back_inserter(results));
-    }
-
-    return results;
-}
-
-result_list runner::test_range(files_iterator begin,
-                               files_iterator end,
-                               std::reference_wrapper<report_type> report,
-                               std::reference_wrapper<std::atomic<std::size_t>> fail_count) const
-{
-    result_list results;
-
-    for (runner::files_iterator i = begin; i != end; i++)
-    {
-        runner::path_type const & file = *i;
-        if (file.extension() == ".xml")
+        catch (std::exception const& ex)
         {
-            try
-            {
-                result_list r = test_one(file, report, fail_count.get());
-                std::move(r.begin(), r.end(), std::back_inserter(results));
-            }
-            catch (std::exception const& ex)
-            {
-                result r;
-                r.state = STATE_ERROR;
-                r.name = file.string();
-                r.error_message = ex.what();
-                r.duration = std::chrono::high_resolution_clock::duration::zero();
-                results.emplace_back(r);
-                mapnik::util::apply_visitor(report_visitor(r), report.get());
-                ++fail_count.get();
-            }
-        }
-        if (fail_limit_ && fail_count.get() >= fail_limit_)
-        {
-            break;
+            result r;
+            r.state = STATE_ERROR;
+            r.name = style_name;
+            r.error_message = ex.what();
+            r.duration = std::chrono::high_resolution_clock::duration::zero();
+            results.emplace_back(r);
+            mapnik::util::apply_visitor(report_visitor(r), report);
         }
     }
 
@@ -248,27 +151,13 @@ result_list runner::test_range(files_iterator begin,
 }
 
 result_list runner::test_one(runner::path_type const& style_path,
-                             report_type & report,
-                             std::atomic<std::size_t> & fail_count) const
+                             report_type & report) const
 {
     config cfg(defaults_);
     mapnik::Map map(cfg.sizes.front().width, cfg.sizes.front().height);
     result_list results;
 
-    try
-    {
-        mapnik::load_map(map, style_path.string(), true);
-    }
-    catch (std::exception const& ex)
-    {
-        std::string what = ex.what();
-        if (what.find("Could not create datasource") != std::string::npos ||
-            what.find("Postgis Plugin: could not connect to server") != std::string::npos)
-        {
-            return results;
-        }
-        throw;
-    }
+    mapnik::load_map(map, style_path.string(), true);
 
     mapnik::parameters const & params = map.get_extra_parameters();
 
@@ -331,19 +220,9 @@ result_list runner::test_one(runner::path_type const& style_path,
                     {
                         map.zoom_all();
                     }
-                    mapnik::util::apply_visitor(renderer_visitor(name,
-                                                                 map,
-                                                                 tiles_count,
-                                                                 scale_factor,
-                                                                 results,
-                                                                 report,
-                                                                 iterations_,
-                                                                 fail_limit_,
-                                                                 fail_count), ren);
-                    if (fail_limit_ && fail_count >= fail_limit_)
-                    {
-                        return results;
-                    }
+                    mapnik::util::apply_visitor(
+                        renderer_visitor(name, map, tiles_count, scale_factor,
+                            results, report, iterations_), ren);
                 }
             }
         }

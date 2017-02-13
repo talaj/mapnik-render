@@ -26,7 +26,6 @@
 #include <mapnik/datasource_cache.hpp>
 #include <mapnik/font_engine_freetype.hpp>
 
-// boost
 #include <boost/program_options.hpp>
 
 #ifdef MAPNIK_LOG
@@ -41,55 +40,53 @@ log_levels_map log_levels
 };
 #endif
 
-using namespace visual_tests;
+using namespace mapnik_render;
 namespace po = boost::program_options;
 
 runner::renderer_container create_renderers(po::variables_map const & args,
                                             boost::filesystem::path const & output_dir,
                                             bool force_append = false)
 {
-    boost::filesystem::path reference_dir(args["images-dir"].as<std::string>());
-    bool overwrite = args.count("overwrite");
     runner::renderer_container renderers;
 
     if (force_append || args.count(agg_renderer::name))
     {
-        renderers.emplace_back(renderer<agg_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<agg_renderer>(output_dir));
     }
 #if defined(HAVE_CAIRO)
     if (force_append || args.count(cairo_renderer::name))
     {
-        renderers.emplace_back(renderer<cairo_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<cairo_renderer>(output_dir));
     }
 #ifdef CAIRO_HAS_SVG_SURFACE
     if (args.count(cairo_svg_renderer::name))
     {
-        renderers.emplace_back(renderer<cairo_svg_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<cairo_svg_renderer>(output_dir));
     }
 #endif
 #ifdef CAIRO_HAS_PS_SURFACE
     if (args.count(cairo_ps_renderer::name))
     {
-        renderers.emplace_back(renderer<cairo_ps_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<cairo_ps_renderer>(output_dir));
     }
 #endif
 #ifdef CAIRO_HAS_PDF_SURFACE
     if (args.count(cairo_pdf_renderer::name))
     {
-        renderers.emplace_back(renderer<cairo_pdf_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<cairo_pdf_renderer>(output_dir));
     }
 #endif
 #endif
 #if defined(SVG_RENDERER)
     if (force_append || args.count(svg_renderer::name))
     {
-        renderers.emplace_back(renderer<svg_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<svg_renderer>(output_dir));
     }
 #endif
 #if defined(GRID_RENDERER)
     if (force_append || args.count(grid_renderer::name))
     {
-        renderers.emplace_back(renderer<grid_renderer>(output_dir, reference_dir, overwrite));
+        renderers.emplace_back(renderer<grid_renderer>(output_dir));
     }
 #endif
 
@@ -103,19 +100,13 @@ runner::renderer_container create_renderers(po::variables_map const & args,
 
 int main(int argc, char** argv)
 {
-    po::options_description desc("visual test runner");
+    po::options_description desc("mapnik-render");
     desc.add_options()
         ("help,h", "produce usage message")
         ("verbose,v", "verbose output")
-        ("overwrite,o", "overwrite reference image")
         ("duration,d", "output rendering duration")
         ("iterations,i", po::value<std::size_t>()->default_value(1), "number of iterations for benchmarking")
-        ("jobs,j", po::value<std::size_t>()->default_value(1), "number of parallel threads")
-        ("limit,l", po::value<std::size_t>()->default_value(0), "limit number of failures")
-        ("styles-dir", po::value<std::string>()->default_value("test/data-visual/styles"), "directory with styles")
-        ("images-dir", po::value<std::string>()->default_value("test/data-visual/images"), "directory with reference images")
-        ("output-dir", po::value<std::string>()->default_value("/tmp/mapnik-visual-images"), "directory for output files")
-        ("unique-subdir,u", "write output files to subdirectory with unique name")
+        ("output-dir", po::value<std::string>()->default_value("./"), "directory for output files")
         ("styles", po::value<std::vector<std::string>>(), "selected styles to test")
         ("fonts", po::value<std::string>()->default_value("fonts"), "font search path")
         ("plugins", po::value<std::string>()->default_value("plugins/input"), "input plugins search path")
@@ -124,7 +115,7 @@ int main(int argc, char** argv)
              [](log_levels_map::value_type const & level) { return level.second == mapnik::logger::get_severity(); } )->first),
              "log level (debug, warn, error, none)")
 #endif
-        ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0, 2.0 }, "1.0, 2.0"), "scale factor")
+        ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0 }, "1.0"), "scale factor")
         (agg_renderer::name, "render with AGG renderer")
 #if defined(HAVE_CAIRO)
         (cairo_renderer::name, "render with Cairo renderer")
@@ -177,47 +168,36 @@ int main(int argc, char** argv)
 
     boost::filesystem::path output_dir(vm["output-dir"].as<std::string>());
 
-    if (vm.count("unique-subdir"))
-    {
-        output_dir /= boost::filesystem::unique_path();
-    }
-
     config defaults;
     defaults.scales = vm["scale-factor"].as<std::vector<double>>();
 
-    runner run(vm["styles-dir"].as<std::string>(),
-               defaults,
+    runner run(defaults,
                vm["iterations"].as<std::size_t>(),
-               vm["limit"].as<std::size_t>(),
-               vm["jobs"].as<std::size_t>(),
                create_renderers(vm, output_dir));
+
     bool show_duration = vm.count("duration");
-    report_type report(vm.count("verbose") ? report_type((console_report(show_duration))) : report_type((console_short_report(show_duration))));
+    report_type report(vm.count("verbose") ?
+        report_type((console_report(show_duration))) :
+        report_type((console_short_report(show_duration))));
     result_list results;
+
+    if (!vm.count("styles"))
+    {
+        std::cerr << "Error: no input styles." << std::endl;
+        return EXIT_FAILURE;
+    }
 
     try
     {
-        if (vm.count("styles"))
-        {
-            results = run.test(vm["styles"].as<std::vector<std::string>>(), report);
-        }
-        else
-        {
-            results = run.test_all(report);
-        }
+        results = run.test(vm["styles"].as<std::vector<std::string>>(), report);
     }
     catch (std::exception & e)
     {
-        std::cerr << "Error running tests: " << e.what() << std::endl;
-        return 1;
+        std::cerr << "Error: " << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     unsigned failed_count = mapnik::util::apply_visitor(summary_visitor(results), report);
-
-    if (failed_count)
-    {
-        html_summary(results, output_dir);
-    }
 
     return failed_count;
 }

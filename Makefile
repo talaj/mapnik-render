@@ -1,4 +1,3 @@
-
 MAPNIK_INCLUDES=$(shell mapnik-config --includes)
 MAPNIK_DEP_INCLUDES=$(shell mapnik-config --dep-includes)
 MAPNIK_DEFINES=$(shell mapnik-config --defines)

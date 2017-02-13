@@ -23,13 +23,11 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-// stl
 #include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <memory>
 
-// mapnik
 #include <mapnik/map.hpp>
 #include <mapnik/image_util.hpp>
 #include <mapnik/image_reader.hpp>
@@ -57,10 +55,9 @@
 #include <mapnik/svg/output/svg_renderer.hpp>
 #endif
 
-// boost
 #include <boost/filesystem.hpp>
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 template <typename ImageType>
@@ -70,20 +67,6 @@ struct raster_renderer_base
 
     static constexpr const char * ext = ".png";
     static constexpr const bool support_tiles = true;
-
-    unsigned compare(image_type const & actual, boost::filesystem::path const& reference) const
-    {
-        std::unique_ptr<mapnik::image_reader> reader(mapnik::get_image_reader(reference.string(), "png"));
-        if (!reader.get())
-        {
-            throw mapnik::image_reader_exception("Failed to load: " + reference.string());
-        }
-
-        mapnik::image_any ref_image_any = reader->read(0, 0, reader->width(), reader->height());
-        ImageType const & reference_image = mapnik::util::get<ImageType>(ref_image_any);
-
-        return mapnik::compare(actual, reference_image, 0, true);
-    }
 
     void save(image_type const & image, boost::filesystem::path const& path) const
     {
@@ -96,17 +79,6 @@ struct vector_renderer_base
     using image_type = std::string;
 
     static constexpr const bool support_tiles = false;
-
-    unsigned compare(image_type const & actual, boost::filesystem::path const& reference) const
-    {
-        std::ifstream stream(reference.string().c_str(), std::ios_base::in | std::ios_base::binary);
-        if (!stream)
-        {
-            throw std::runtime_error("Could not open: " + reference.string());
-        }
-        std::string expected(std::istreambuf_iterator<char>(stream.rdbuf()), std::istreambuf_iterator<char>());
-        return std::max(actual.size(), expected.size()) - std::min(actual.size(), expected.size());
-    }
 
     void save(image_type const & image, boost::filesystem::path const& path) const
     {
@@ -299,8 +271,8 @@ public:
     using renderer_type = Renderer;
     using image_type = typename Renderer::image_type;
 
-    renderer(boost::filesystem::path const & _output_dir, boost::filesystem::path const & _reference_dir, bool _overwrite)
-        : ren(), output_dir(_output_dir), reference_dir(_reference_dir), overwrite(_overwrite)
+    renderer(boost::filesystem::path const & _output_dir)
+        : ren(), output_dir(_output_dir)
     {
     }
 
@@ -339,33 +311,19 @@ public:
                   map_size const & tiles,
                   double scale_factor) const
     {
-        boost::filesystem::path reference = reference_dir / image_file_name(name, size, tiles, scale_factor, true);
-        bool reference_exists = boost::filesystem::exists(reference);
         result res;
 
-        res.state = reference_exists ? STATE_OK : STATE_OVERWRITE;
+        res.state = STATE_OK;
         res.name = name;
         res.renderer_name = Renderer::name;
         res.scale_factor = scale_factor;
         res.size = size;
         res.tiles = tiles;
-        res.reference_image_path = reference;
-        res.diff = reference_exists ? ren.compare(image, reference) : 0;
 
-        if (res.diff)
-        {
-            boost::filesystem::create_directories(output_dir);
-            boost::filesystem::path path = output_dir / image_file_name(name, size, tiles, scale_factor, false);
-            res.actual_image_path = path;
-            res.state = STATE_FAIL;
-            ren.save(image, path);
-        }
-
-        if ((res.diff && overwrite) || !reference_exists)
-        {
-            ren.save(image, reference);
-            res.state = STATE_OVERWRITE;
-        }
+        boost::filesystem::create_directories(output_dir);
+        boost::filesystem::path path = output_dir / image_file_name(name, size, tiles, scale_factor);
+        res.image_path = path;
+        ren.save(image, path);
 
         return res;
     }
@@ -374,8 +332,7 @@ private:
     std::string image_file_name(std::string const & test_name,
                                 map_size const & size,
                                 map_size const & tiles,
-                                double scale_factor,
-                                bool reference) const
+                                double scale_factor) const
     {
         std::stringstream s;
         s << test_name << '-' << (size.width / scale_factor) << '-' << (size.height / scale_factor) << '-';
@@ -384,18 +341,12 @@ private:
             s << tiles.width << 'x' << tiles.height << '-';
         }
         s << std::fixed << std::setprecision(1) << scale_factor << '-' << Renderer::name;
-        if (reference)
-        {
-            s << "-reference";
-        }
         s << Renderer::ext;
         return s.str();
     }
 
     const Renderer ren;
     const boost::filesystem::path output_dir;
-    const boost::filesystem::path reference_dir;
-    const bool overwrite;
 };
 
 using renderer_type = mapnik::util::variant<renderer<agg_renderer>

@@ -29,7 +29,7 @@
 #include <boost/spirit/include/phoenix.hpp>
 #pragma GCC diagnostic pop
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 namespace qi = boost::spirit::qi;

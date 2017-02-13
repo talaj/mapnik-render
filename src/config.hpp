@@ -23,15 +23,13 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-// stl
 #include <vector>
 #include <string>
 #include <chrono>
 
-// boost
 #include <boost/filesystem.hpp>
 
-namespace visual_tests
+namespace mapnik_render
 {
 
 struct map_size
@@ -45,8 +43,8 @@ struct map_size
 struct config
 {
     config() : status(true),
-               scales({ 1.0, 2.0 }),
-               sizes({ { 500, 100 } }),
+               scales({ 1.0 }),
+               sizes({ { 512, 512 } }),
                tiles({ { 1, 1 } }) { }
 
     bool status;
@@ -58,9 +56,7 @@ struct config
 enum result_state : std::uint8_t
 {
     STATE_OK,
-    STATE_FAIL,
     STATE_ERROR,
-    STATE_OVERWRITE
 };
 
 struct result
@@ -71,10 +67,8 @@ struct result
     map_size size;
     map_size tiles;
     double scale_factor;
-    boost::filesystem::path actual_image_path;
-    boost::filesystem::path reference_image_path;
+    boost::filesystem::path image_path;
     std::string error_message;
-    unsigned diff;
     std::chrono::high_resolution_clock::duration duration;
 };
 

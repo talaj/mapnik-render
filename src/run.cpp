@@ -116,7 +116,7 @@ int main(int argc, char** argv)
              "log level (debug, warn, error, none)")
 #endif
         ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0 }, "1.0"), "scale factor")
-        ("envelope", po::value<std::string>(), "bounding box in map coordinates")
+        ("envelope", po::value<std::vector<std::string>>(), "bounding box in map coordinates")
         ("size", po::value<std::string>(), "size of output images")
         (agg_renderer::name, "render with AGG renderer")
 #if defined(HAVE_CAIRO)
@@ -175,9 +175,13 @@ int main(int argc, char** argv)
 
     if (vm.count("envelope"))
     {
-        mapnik::box2d<double> box;
-        box.from_string(vm["envelope"].as<std::string>());
-        defaults.envelopes.push_back(box);
+        auto const & envelopes = vm["envelope"].as<std::vector<std::string>>();
+        for (auto const & env : envelopes)
+        {
+            mapnik::box2d<double> box;
+            box.from_string(env);
+            defaults.envelopes.push_back(box);
+        }
     }
 
     if (vm.count("size"))

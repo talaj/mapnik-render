@@ -55,6 +55,14 @@
 #include <mapnik/svg/output/svg_renderer.hpp>
 #endif
 
+#include <mapnik/layer.hpp>
+#include <mapnik/config_error.hpp>
+#include <mapnik/feature_type_style.hpp>
+#include <mapnik/planner.hpp>
+#include <mapnik/image_compositing.hpp>
+#include <future>
+#include <functional>
+
 #include <boost/filesystem.hpp>
 
 namespace mapnik_render
@@ -95,12 +103,50 @@ struct agg_renderer : raster_renderer_base<mapnik::image_rgba8>
 {
     static constexpr const char * name = "agg";
 
+    void ren(std::reference_wrapper<mapnik::Map> map, std::reference_wrapper<image_type> image) const
+    {
+        mapnik::agg_renderer<image_type> ren(map.get(), image.get());
+        ren.apply();
+    }
+
     image_type render(mapnik::Map const & map, double scale_factor) const
     {
-        image_type image(map.width(), map.height());
-        mapnik::agg_renderer<image_type> ren(map, image, scale_factor);
-        ren.apply();
-        return image;
+        mapnik::Map copy(map);
+        mapnik::planner planner(copy);
+
+        image_type background(map.width(), map.height());
+        image_type foreground(map.width(), map.height());
+
+        std::future<void> background_future = std::async(
+            std::launch::async,
+            &agg_renderer::ren,
+            this,
+            std::ref(planner.background_),
+            std::ref(background));
+
+        std::future<void> foreground_future = std::async(
+            std::launch::async,
+            &agg_renderer::ren,
+            this,
+            std::ref(planner.foreground_),
+            std::ref(foreground));
+
+        if (background_future.valid())
+        {
+            background_future.wait();
+        }
+
+        if (foreground_future.valid())
+        {
+            foreground_future.wait();
+        }
+
+        mapnik::premultiply_alpha(background);
+        mapnik::premultiply_alpha(foreground);
+
+        mapnik::composite(background, foreground, mapnik::dst_over);
+
+        return background;
     }
 };
 

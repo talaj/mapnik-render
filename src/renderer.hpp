@@ -60,6 +60,7 @@
 #include <mapnik/feature_type_style.hpp>
 #include <mapnik/planner.hpp>
 #include <mapnik/image_compositing.hpp>
+#include <mapnik/timer.hpp>
 #include <future>
 #include <functional>
 
@@ -105,6 +106,7 @@ struct agg_renderer : raster_renderer_base<mapnik::image_rgba8>
 
     void ren(std::reference_wrapper<mapnik::Map> map, std::reference_wrapper<image_type> image) const
     {
+        mapnik::progress_timer __stats__(std::clog, "REN");
         mapnik::agg_renderer<image_type> ren(map.get(), image.get());
         ren.apply();
     }
@@ -114,6 +116,7 @@ struct agg_renderer : raster_renderer_base<mapnik::image_rgba8>
         mapnik::Map copy(map);
         mapnik::planner planner(copy);
 
+        mapnik::progress_timer __stats__(std::clog, "PLANNER");
         image_type background(map.width(), map.height());
         image_type foreground(map.width(), map.height());
 

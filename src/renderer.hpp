@@ -147,7 +147,7 @@ struct agg_renderer : raster_renderer_base<mapnik::image_rgba8>
         mapnik::premultiply_alpha(background);
         mapnik::premultiply_alpha(foreground);
 
-        mapnik::composite(background, foreground, mapnik::dst_over);
+        mapnik::composite(background, foreground, mapnik::src_over);
 
         return background;
     }

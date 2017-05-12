@@ -89,6 +89,10 @@ runner::renderer_container create_renderers(po::variables_map const & args,
         renderers.emplace_back(renderer<grid_renderer>(output_dir));
     }
 #endif
+    if (force_append || args.count(mvt_renderer::name))
+    {
+        renderers.emplace_back(renderer<mvt_renderer>(output_dir));
+    }
 
     if (renderers.empty())
     {
@@ -137,6 +141,7 @@ int main(int argc, char** argv)
 #if defined(GRID_RENDERER)
         (grid_renderer::name, "render with Grid renderer")
 #endif
+        (mvt_renderer::name, "render Mapbox vector tile")
         ;
 
     po::positional_options_description p;

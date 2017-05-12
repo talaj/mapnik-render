@@ -55,6 +55,10 @@
 #include <mapnik/svg/output/svg_renderer.hpp>
 #endif
 
+#include "vector_tile_merc_tile.hpp"
+#include "vector_tile_processor.hpp"
+#include "vector_tile_compression.hpp"
+
 #include <boost/filesystem.hpp>
 
 namespace mapnik_render
@@ -242,6 +246,31 @@ struct grid_renderer : raster_renderer_base<mapnik::image_rgba8>
 };
 #endif
 
+struct mvt_renderer : vector_renderer_base
+{
+    static constexpr const char * name = "mvt";
+    static constexpr const char * ext = ".mvt";
+
+    image_type render(mapnik::Map const & map, double scale_factor) const
+    {
+        std::uint64_t x = 2257;
+        std::uint64_t y = 1393;
+        std::uint64_t z = 12;
+        std::uint32_t tile_size = 4096;
+        std::int32_t buffer_size = 0;
+        double scale_denom = 0.0;
+        int offset_x = 0;
+        int offset_y = 0;
+
+        mapnik::vector_tile_impl::processor proc(map);
+        mapnik::vector_tile_impl::merc_tile tile(proc.create_tile(
+            x, y, z, tile_size, buffer_size, scale_denom, offset_x, offset_y));
+        std::string output;
+        mapnik::vector_tile_impl::zlib_compress(tile.data(), tile.size(), output);
+        return output;
+    }
+};
+
 template <typename T>
 void set_rectangle(T const & src, T & dst, std::size_t x, std::size_t y)
 {
@@ -368,6 +397,7 @@ using renderer_type = mapnik::util::variant<renderer<agg_renderer>
 #if defined(GRID_RENDERER)
                                             ,renderer<grid_renderer>
 #endif
+                                            ,renderer<mvt_renderer>
                                             >;
 
 }

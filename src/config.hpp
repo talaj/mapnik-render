@@ -27,7 +27,7 @@
 #include <string>
 #include <chrono>
 
-#include <mapnik/box2d.hpp>
+#include <mapnik/geometry/box2d.hpp>
 
 #include <boost/filesystem.hpp>
 

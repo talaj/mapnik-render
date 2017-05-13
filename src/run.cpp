@@ -22,6 +22,7 @@
 
 #include "runner.hpp"
 #include "config.hpp"
+#include "mercator.hpp"
 
 #include <mapnik/datasource_cache.hpp>
 #include <mapnik/font_engine_freetype.hpp>
@@ -89,7 +90,7 @@ runner::renderer_container create_renderers(po::variables_map const & args,
         renderers.emplace_back(renderer<grid_renderer>(output_dir));
     }
 #endif
-    if (force_append || args.count(mvt_renderer::name))
+    if (args.count(mvt_renderer::name))
     {
         renderers.emplace_back(renderer<mvt_renderer>(output_dir));
     }
@@ -184,6 +185,12 @@ int main(int argc, char** argv)
         mapnik::box2d<double> box;
         box.from_string(vm["envelope"].as<std::string>());
         defaults.envelopes.push_back(box);
+    }
+    else if (vm.count("merc"))
+    {
+        merc_tile tile;
+        tile.from_string(vm["merc"].as<std::string>());
+        defaults.envelopes.push_back(tile.extent);
     }
 
     if (vm.count("size"))

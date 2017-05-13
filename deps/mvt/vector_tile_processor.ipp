@@ -196,7 +196,7 @@ inline void create_geom_layer(tile_layer & layer,
                                          process_all_rings,
                                          encoder);
                 transform_type transformer(vs2, trans_buffered_extent, clipper);
-                //mapnik::util::apply_visitor(transformer, geom);
+                mapnik::util::apply_visitor(transformer, geom);
                 feature = features->next();
             }
         }

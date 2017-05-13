@@ -121,6 +121,7 @@ int main(int argc, char** argv)
 #endif
         ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0 }, "1.0"), "scale factor")
         ("envelope", po::value<std::string>(), "bounding box in map coordinates")
+        ("merc", po::value<std::string>(), "x y z coordinates in Mercator")
         ("size", po::value<std::string>(), "size of output images")
         (agg_renderer::name, "render with AGG renderer")
 #if defined(HAVE_CAIRO)

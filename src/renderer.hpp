@@ -55,9 +55,9 @@
 #include <mapnik/svg/output/svg_renderer.hpp>
 #endif
 
-#include "vector_tile_merc_tile.hpp"
-#include "vector_tile_processor.hpp"
-#include "vector_tile_compression.hpp"
+#include <vector_tile_merc_tile.hpp>
+#include <vector_tile_processor.hpp>
+#include <vector_tile_compression.hpp>
 
 #include <boost/filesystem.hpp>
 

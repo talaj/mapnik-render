@@ -190,7 +190,7 @@ int main(int argc, char** argv)
     {
         merc_tile tile;
         tile.from_string(vm["merc"].as<std::string>());
-        defaults.envelopes.push_back(tile.extent);
+        defaults.envelopes.push_back(tile.extent());
     }
 
     if (vm.count("size"))

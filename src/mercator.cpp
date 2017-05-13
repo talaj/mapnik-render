@@ -1,8 +1,7 @@
-#ifndef MAPNIK_RENDER_MERCATOR_HPP
-#define MAPNIK_RENDER_MERCATOR_HPP
+#include "mercator.hpp"
 
-#include "vector_tile_merc_tile.hpp"
-#include "vector_tile_projection.hpp"
+#include <vector_tile_merc_tile.hpp>
+#include <vector_tile_projection.hpp>
 
 #include <sstream>
 
@@ -22,5 +21,3 @@ mapnik::box2d<double> merc_tile::extent() const
 }
 
 }
-
-#endif

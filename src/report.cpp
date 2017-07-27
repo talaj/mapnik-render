@@ -111,7 +111,7 @@ void console_short_report::report(result const & r)
     switch (r.state)
     {
         case STATE_OK:
-            s << ".";
+            //s << ".";
             break;
         case STATE_ERROR:
             s << "ERROR (" << r.error_message << ")\n";

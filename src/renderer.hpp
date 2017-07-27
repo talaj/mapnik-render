@@ -320,10 +320,12 @@ public:
         res.size = size;
         res.tiles = tiles;
 
+        /*
         boost::filesystem::create_directories(output_dir);
         boost::filesystem::path path = output_dir / image_file_name(name, size, tiles, scale_factor);
         res.image_path = path;
         ren.save(image, path);
+        */
 
         return res;
     }

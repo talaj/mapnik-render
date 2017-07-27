@@ -81,7 +81,7 @@ private:
                 result r(renderer.report(image, name_, size, tiles_, scale_factor_));
                 r.duration = end - start;
                 mapnik::util::apply_visitor(report_visitor(r), report_);
-                results_.push_back(std::move(r));
+                //results_.push_back(std::move(r));
             }
         }
     }
@@ -221,16 +221,22 @@ result_list runner::test_one(runner::path_type const& style_path,
                     renderer_visitor visitor(name, map, tiles_count, scale_factor,
                         results, report, iterations_);
 
-                    if (cfg.envelopes.empty())
+                    //mapnik::box2d<double> box(3600489.78 2426417.03, 13149615.07 9001224.45);
+                    mapnik::box2d<double> base_box(3600489, 2426417, 13149615, 11975543);
+
+                    unsigned grid_div = 10000;
+                    double tile_width = (base_box.maxx() - base_box.minx()) / grid_div;
+                    double tile_height = (base_box.maxy() - base_box.miny()) / grid_div;
+
+                    for (unsigned i = 0; i < grid_div; i += 100)
                     {
-                        map.zoom_all();
-                        mapnik::util::apply_visitor(visitor, ren);
-                    }
-                    else
-                    {
-                        for (auto const & box : cfg.envelopes)
+                        for (unsigned j = 0; j < grid_div; j += 100)
                         {
+                            double x = base_box.minx() + j * tile_width;
+                            double y = base_box.miny() + i * tile_height;
+                            mapnik::box2d<double> box(x, y, x + tile_width, y + tile_height);
                             map.zoom_to_box(box);
+                            std::clog << box << std::endl;
                             mapnik::util::apply_visitor(visitor, ren);
                         }
                     }

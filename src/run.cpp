@@ -118,6 +118,7 @@ int main(int argc, char** argv)
         ("scale-factor,s", po::value<std::vector<double>>()->default_value({ 1.0 }, "1.0"), "scale factor")
         ("envelope", po::value<std::string>(), "bounding box in map coordinates")
         ("size", po::value<std::string>(), "size of output images")
+        ("tiles", po::value<std::string>(), "number of vertical and horizontal tiles")
         (agg_renderer::name, "render with AGG renderer")
 #if defined(HAVE_CAIRO)
         (cairo_renderer::name, "render with Cairo renderer")
@@ -185,6 +186,13 @@ int main(int argc, char** argv)
         const map_sizes_grammar<std::string::const_iterator> map_sizes_parser;
         std::string size(vm["size"].as<std::string>());
         parse_map_sizes(map_sizes_parser, size, defaults.sizes);
+    }
+
+    if (vm.count("tiles"))
+    {
+        const map_sizes_grammar<std::string::const_iterator> map_sizes_parser;
+        std::string tiles(vm["tiles"].as<std::string>());
+        parse_map_sizes(map_sizes_parser, tiles, defaults.tiles);
     }
 
     runner run(defaults,

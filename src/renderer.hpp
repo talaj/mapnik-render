@@ -55,6 +55,8 @@
 #include <mapnik/svg/output/svg_renderer.hpp>
 #endif
 
+#include <mapnik/util/parallelizer.hpp>
+
 #include <boost/filesystem.hpp>
 
 namespace mapnik_render
@@ -98,8 +100,18 @@ struct agg_renderer : raster_renderer_base<mapnik::image_rgba8>
     image_type render(mapnik::Map const & map, double scale_factor) const
     {
         image_type image(map.width(), map.height());
-        mapnik::agg_renderer<image_type> ren(map, image, scale_factor);
-        ren.apply();
+
+        if (mapnik::parallelizer::is_parallelizable(map))
+        {
+            const double scale_denom = 0;
+            mapnik::parallelizer::render(map, image, scale_denom, scale_factor);
+        }
+        else
+        {
+            mapnik::agg_renderer<image_type> ren(map, image, scale_factor);
+            ren.apply();
+        }
+
         return image;
     }
 };

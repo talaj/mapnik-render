@@ -321,7 +321,8 @@ public:
                   std::string const & name,
                   map_size const & size,
                   map_size const & tiles,
-                  double scale_factor) const
+                  double scale_factor,
+                  mapnik::box2d<double> const & box) const
     {
         result res;
 
@@ -333,7 +334,7 @@ public:
         res.tiles = tiles;
 
         boost::filesystem::create_directories(output_dir);
-        boost::filesystem::path path = output_dir / image_file_name(name, size, tiles, scale_factor);
+        boost::filesystem::path path = output_dir / image_file_name(name, size, tiles, scale_factor, box);
         res.image_path = path;
         ren.save(image, path);
 
@@ -344,7 +345,8 @@ private:
     std::string image_file_name(std::string const & test_name,
                                 map_size const & size,
                                 map_size const & tiles,
-                                double scale_factor) const
+                                double scale_factor,
+                                mapnik::box2d<double> const & box) const
     {
         std::stringstream s;
         s << test_name << '-' << (size.width / scale_factor) << '-' << (size.height / scale_factor) << '-';
@@ -353,6 +355,9 @@ private:
             s << tiles.width << 'x' << tiles.height << '-';
         }
         s << std::fixed << std::setprecision(1) << scale_factor << '-' << Renderer::name;
+        s << '_' << std::fixed << std::setprecision(8) <<
+            box.minx() << '_' << box.miny() << '_' <<
+            box.maxx() << '_' << box.maxy();
         s << Renderer::ext;
         return s.str();
     }

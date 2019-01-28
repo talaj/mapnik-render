@@ -78,7 +78,7 @@ private:
             if (i == 1)
             {
                 std::chrono::high_resolution_clock::time_point end(std::chrono::high_resolution_clock::now());
-                result r(renderer.report(image, name_, size, tiles_, scale_factor_));
+                result r(renderer.report(image, name_, size, tiles_, scale_factor_, map_.get_current_extent()));
                 r.duration = end - start;
                 mapnik::util::apply_visitor(report_visitor(r), report_);
                 results_.push_back(std::move(r));

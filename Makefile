@@ -13,3 +13,7 @@ OBJS=$(SRCS:.cpp=.o)
 
 mapnik-render:$(OBJS)
 	$(CXX) $(LDFLAGS) $^ -o $@
+
+clean:
+	rm -f src/*.o
+	rm mapnik-render
